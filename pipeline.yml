@@ -1,0 +1,164 @@
+---
+organization:
+- name: HPE
+- description: HPE GD China Dedicated Delivery Center
+- accounts:
+  - identity: USER_A@hpe.com
+    accessToken: AAAA
+    accountName: USER_A
+  - identity: USER_B@hpe.com
+    accessToken: BBBB
+    accountName: USER_B
+  - identity: USER_C@hpe.com
+    accessToken: CCCC
+    accountName: USER_C
+- roles:
+  - name: DEV
+    description: Developer Role
+  - name: QA
+    description: Quality Assurance and Testing Role
+  - name: OPS
+    description: Operation Role
+- products:
+  - name: PRODUCT_X
+    description: Product for X platform
+    pipelines: 
+    - name: PROD_X_PIPELINE_DEV_QA
+      description: Dev / QA Env Pipeline for Product X
+      capabilitiesDescription: [CAP_CM, CAP_CI, CAP_CR, CAP_CB, CAP_CD, CAP_CT]
+      capabilities:
+      - name: CAP_CM
+        description: Configuration Management
+        authorizations:
+        - roleInPipeline: DEV
+          authorizedGroup: admin
+      - name: CAP_CI
+        description: Continuous Integration 
+        dependencies: CAP_CM
+        authorizations:
+        - roleInPipeline: DEV
+          authorizedGroup: admin
+      - name: CAP_CR
+        description: Continuous Code Quality Analysis
+        dependencies: CAP_CI
+        authorizations:
+        - roleInPipeline: DEV
+          authorizedGroup: operator
+        - roleInPipeline: QA
+          authorizedGroup: admin
+      - name: CAP_CB
+        description: Continuous Build
+        dependencies: CAP_CI
+        authorizations:
+        - roleInPipeline: DEV
+          authorizedGroup: admin
+      - name: CAP_CD
+        description: Continuous Deploy
+        dependencies: CAP_CB
+        authorizations:
+        - roleInPipeline: DEV
+          authorizedGroup: operator
+        - roleInPipeline: QA
+          authorizedGroup: operator
+      - name: CAP_CT
+        description: Continuous Testing
+        dependencies: CAP_CD
+        authorizations:
+        - roleInPipeline: DEV
+          authorizedGroup: operator
+        - roleInPipeline: QA
+          authorizedGroup: operator
+- permissions:
+  - pipeline:PROD_X_PIPELINE_DEV_QA
+    accounts: 
+    - USER_A@hpe.com
+    - USER_B@hpe.com
+    role: DEV
+  - pipeline:PROD_X_PIPELINE_DEV_QA
+    accounts: 
+    - USER_B@hpe.com
+    - USER_C@hpe.com
+    role: QA
+  - pipeline:PROD_X_PIPELINE_PROD
+    accounts:
+    - USER_C@hpe.com
+    role: OPS
+  - pipeline:PROD_Y_PIPELINE_DEV_QA
+    account: USER_A@hpe.com
+    role: DEV
+---
+capabilities:
+- name: CAP_CM
+  node:
+  - type: git
+    provider: docker
+  properties:
+  - name: Repository URL
+    value: 'https://github.hpe.com/DDC-SEED/devops-meshark'
+  - name: Source Path
+    value: '/server/src/main'
+  - name: Test Path
+    value: '/server/src/test'
+- name: DEVOPS-CI
+  description: Continuous Integration
+  node:
+  - type: jenkins-master
+    provider: docker
+  inputs:
+  - branch: master
+  triggers:
+  - type: push
+
+- name: DEVOPS-CR
+  description: Continuous Code Quality Analysis
+  node:
+  - type: jenkins-agent
+    provider: docker
+  inputs:
+  - branch: master
+  triggers:
+  - type: push | pull request    
+
+- name: DEVOPS-CB
+  description: Continuous Building
+  node:
+  - type: jenkins-agent
+    provider: docker
+  properties:
+  - name: APP_VERSION
+    value: {{APP_VERSION}}
+  jobs:
+  - name: Build
+    type: builder
+    artifact_dir: output
+    build_type: gradle
+    script: |-
+      #!/bin/bash
+      gradle
+    enable_tests: true
+    test_file_pattern: tests/TEST-*.xml
+
+- name: DEVOPS-CD
+  description: Continuous Deploy
+  node:
+  - type: jenkins-agent
+    provider: docker
+  inputs:
+  - type: job
+    job: Build
+  jobs:
+  - name: Deploy to dev
+    target:
+      node:
+      - type: docker
+        space: dev
+    script: |
+      git push "${CF_APP}"
+      # View logs
+      #git logs "${CF_APP}" --recent
+
+- name: DEVOPS-CT
+  description: Continuous Testing
+  node:
+  - type: jenkins-agent
+    provider: docker
