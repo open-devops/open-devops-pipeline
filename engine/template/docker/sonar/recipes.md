@@ -16,6 +16,6 @@ Analyse a project:
 
 ```bash
 mvn sonar:sonar \
-  -Dsonar.host.url=http://$(boot2docker ip):9000 \
-  -Dsonar.jdbc.url=jdbc:postgresql://$(boot2docker ip)/sonar
+  -Dsonar.host.url=http://ipaddress:9000 \
+  -Dsonar.jdbc.url=jdbc:postgresql://ipaddress/sonar
 ```
