@@ -1,15 +1,15 @@
 ---
 organization:
-- name: HPE
-- description: HPE GD China Dedicated Delivery Center
+- name: ORGA
+- description: Organization A
 - accounts:
-  - identity: USER_A@hpe.com
+  - identity: USER_A@org.com
     accessToken: AAAA
     accountName: USER_A
-  - identity: USER_B@hpe.com
+  - identity: USER_B@org.com
     accessToken: BBBB
     accountName: USER_B
-  - identity: USER_C@hpe.com
+  - identity: USER_C@org.com
     accessToken: CCCC
     accountName: USER_C
 - roles:
@@ -71,20 +71,20 @@ organization:
 - permissions:
   - pipeline:PROD_X_PIPELINE_DEV_QA
     accounts: 
-    - USER_A@hpe.com
-    - USER_B@hpe.com
+    - USER_A@org.com
+    - USER_B@org.com
     role: DEV
   - pipeline:PROD_X_PIPELINE_DEV_QA
     accounts: 
-    - USER_B@hpe.com
-    - USER_C@hpe.com
+    - USER_B@org.com
+    - USER_C@org.com
     role: QA
   - pipeline:PROD_X_PIPELINE_PROD
     accounts:
-    - USER_C@hpe.com
+    - USER_C@org.com
     role: OPS
   - pipeline:PROD_Y_PIPELINE_DEV_QA
-    account: USER_A@hpe.com
+    account: USER_A@org.com
     role: DEV
 ---
 capabilities:
@@ -94,7 +94,7 @@ capabilities:
     provider: docker
   properties:
   - name: Repository URL
-    value: 'https://github.hpe.com/DDC-SEED/devops-meshark'
+    value: 'https://github.com/SEED/devops-meshark'
   - name: Source Path
     value: '/server/src/main'
   - name: Test Path
