@@ -12,7 +12,7 @@ This includes:
 - Static sample tutorial.
 - List of known issues.
 
-## The benefit of defining a pipeline is:
+## The benefit of defining a pipeline:
 - Knowing what you have
 - Knowing what you don’t have
 - Knowing your bottlenecks
