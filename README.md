@@ -12,6 +12,13 @@ This includes:
 - Static sample tutorial.
 - List of known issues.
 
+## The benefit of defining a pipeline is:
+- Knowing what you have
+- Knowing what you don’t have
+- Knowing your bottlenecks
+- Seeing your whole DevOps operation in one place
+- And finally having an opportunity to improve
+
 ## License
 
 Copyright 2016 The Open DevOps Initiative
