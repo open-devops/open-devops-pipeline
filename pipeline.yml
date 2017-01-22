@@ -1,164 +1,71 @@
 ---
-organization:
-- name: ORGA
-- description: Organization A
-- accounts:
-  - identity: USER_A@org.com
-    accessToken: AAAA
-    accountName: USER_A
-  - identity: USER_B@org.com
-    accessToken: BBBB
-    accountName: USER_B
-  - identity: USER_C@org.com
-    accessToken: CCCC
-    accountName: USER_C
-- roles:
-  - name: DEV
-    description: Developer Role
-  - name: QA
-    description: Quality Assurance and Testing Role
-  - name: OPS
-    description: Operation Role
-- products:
-  - name: PRODUCT_X
-    description: Product for X platform
-    pipelines: 
-    - name: PROD_X_PIPELINE_DEV_QA
-      description: Dev / QA Env Pipeline for Product X
-      capabilitiesDescription: [CAP_CM, CAP_CI, CAP_CR, CAP_CB, CAP_CD, CAP_CT]
-      capabilities:
-      - name: CAP_CM
-        description: Configuration Management
-        authorizations:
-        - roleInPipeline: DEV
-          authorizedGroup: admin
-      - name: CAP_CI
-        description: Continuous Integration 
-        dependencies: CAP_CM
-        authorizations:
-        - roleInPipeline: DEV
-          authorizedGroup: admin
-      - name: CAP_CR
-        description: Continuous Code Quality Analysis
-        dependencies: CAP_CI
-        authorizations:
-        - roleInPipeline: DEV
-          authorizedGroup: operator
-        - roleInPipeline: QA
-          authorizedGroup: admin
-      - name: CAP_CB
-        description: Continuous Build
-        dependencies: CAP_CI
-        authorizations:
-        - roleInPipeline: DEV
-          authorizedGroup: admin
-      - name: CAP_CD
-        description: Continuous Deploy
-        dependencies: CAP_CB
-        authorizations:
-        - roleInPipeline: DEV
-          authorizedGroup: operator
-        - roleInPipeline: QA
-          authorizedGroup: operator
-      - name: CAP_CT
-        description: Continuous Testing
-        dependencies: CAP_CD
-        authorizations:
-        - roleInPipeline: DEV
-          authorizedGroup: operator
-        - roleInPipeline: QA
-          authorizedGroup: operator
-- permissions:
-  - pipeline:PROD_X_PIPELINE_DEV_QA
-    accounts: 
-    - USER_A@org.com
-    - USER_B@org.com
-    role: DEV
-  - pipeline:PROD_X_PIPELINE_DEV_QA
-    accounts: 
-    - USER_B@org.com
-    - USER_C@org.com
-    role: QA
-  - pipeline:PROD_X_PIPELINE_PROD
-    accounts:
-    - USER_C@org.com
-    role: OPS
-  - pipeline:PROD_Y_PIPELINE_DEV_QA
-    account: USER_A@org.com
-    role: DEV
----
-capabilities:
-- name: CAP_CM
-  node:
-  - type: git
-    provider: docker
-  properties:
-  - name: Repository URL
-    value: 'https://github.com/SEED/devops-meshark'
-  - name: Source Path
-    value: '/server/src/main'
-  - name: Test Path
-    value: '/server/src/test'
-- name: DEVOPS-CI
-  description: Continuous Integration
-  node:
-  - type: jenkins-master
-    provider: docker
-  inputs:
-  - branch: master
-  triggers:
-  - type: push
-
-- name: DEVOPS-CR
-  description: Continuous Code Quality Analysis
-  node:
-  - type: jenkins-agent
-    provider: docker
-  inputs:
-  - branch: master
-  triggers:
-  - type: push | pull request    
-
-- name: DEVOPS-CB
-  description: Continuous Building
-  node:
-  - type: jenkins-agent
-    provider: docker
-  properties:
-  - name: APP_VERSION
-    value: {{APP_VERSION}}
-  jobs:
-  - name: Build
-    type: builder
-    artifact_dir: output
-    build_type: gradle
-    script: |-
-      #!/bin/bash
-      gradle
-    enable_tests: true
-    test_file_pattern: tests/TEST-*.xml
-
-- name: DEVOPS-CD
-  description: Continuous Deploy
-  node:
-  - type: jenkins-agent
-    provider: docker
-  inputs:
-  - type: job
-    job: Build
-  jobs:
-  - name: Deploy to dev
-    target:
-      node:
-      - type: docker
-        space: dev
-    script: |
-      git push "${CF_APP}"
-      # View logs
-      #git logs "${CF_APP}" --recent
-
-- name: DEVOPS-CT
-  description: Continuous Testing
-  node:
-  - type: jenkins-agent
-    provider: docker
+pipeline:
+  name: DevQAPipeline
+  description: Dev / QA Env Pipeline for Product X
+  processflow：
+    - verify
+    - preBuildTest
+    - build
+    - postBuildTest
+    - parallel：
+        - series：
+            - deployDevEnv
+            - devFuncTest
+        - series：
+            - deployQAEnv
+            - qaFuncTest
+shared:
+  environment:
+    GO_ENV: test
+    TRIGGER_BRANCH: master
+  matrix:
+    GO_VERSION: ['1.7.4', '1.6.4']
+proceses:
+  verify:
+    category: 'CodeCheck'
+    stage：'Build'
+    type: 'SonarQube_FingBugs'
+    parameters:
+      engine: 'FindBugs'
+  preBuildTest：
+    category: 'UnitTest'
+    stage：'Build'
+    type: 'Go_UnitTest'
+  build:
+    category: 'CodeBuild'
+    stage：'Build'
+    type: 'Go_Build'
+    parameters:
+      GOARCH: 'amd64'
+  postBuildTest:
+    category: 'FuncTest'
+    stage：'Test'
+    type: 'API_Test'
+    parameters:
+      TEST_SUITE_NAME: 'mininum_api_test'
+  deployDevEnv:
+    category: 'containerDeploy'
+    stage：'Deploy'
+    type: 'k8s_Deploy'
+    parameters:
+      descriptor: 'service_dev_env.yaml'
+    environments: 'configMap_dev_env.yaml'
+  devFuncTest:
+    category: 'FuncTest'
+    stage：'Test'
+    type: 'API_Test'
+    parameters:
+      TEST_SUITE_NAME: 'dev_api_test'
+  deployQAEnv:
+    category: 'containerDeploy'
+    stage：'Deploy'
+    type: 'k8s_Deploy'
+    parameters:
+      descriptor: 'service_dev_env.yaml'
+    environments: 'configMap_qa_env.yaml'
+  qaFuncTest:
+    category: 'FuncTest'
+    stage：'Test'
+    type: 'API_Test'
+    parameters:
+      TEST_SUITE_NAME: 'qa_api_test'
